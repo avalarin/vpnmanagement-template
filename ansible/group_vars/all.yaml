@@ -1,0 +1,17 @@
+---
+servers:
+  # example:
+  #   server_host: remove.this.example.com
+  #   server_network: 10.11.0
+  #   server_privkey: !vault |
+  #           $ANSIBLE_VAULT;1.1;AES256
+  #           <some encrypted data>
+  #   server_pubkey: <some base64>
+
+clients:
+  # - client_name: avalarin-mac
+  #   client_seqnum: 10
+  #   client_privkey: !vault |
+  #           $ANSIBLE_VAULT;1.1;AES256
+  #           <some encrypted data>
+  #   client_pubkey: <some base64>

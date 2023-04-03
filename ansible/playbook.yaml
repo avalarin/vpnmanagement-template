@@ -1,0 +1,67 @@
+---
+- name: setup vpn clients
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: create client wireguard config
+    with_items:
+    - "{{ clients | product(servers.keys()) }}"
+    template:
+      dest: ../configs/{{ item[0].client_name }}@{{ item[1] }}.conf
+      src: client_wg0.conf.j2
+  - name: generate qrcode
+    with_items:
+    - "{{ clients | product(servers.keys()) }}"
+    ansible.builtin.shell: cat ../configs/{{ item[0].client_name }}@{{ item[1] }}.conf | qrencode -s 5 -o ../configs/{{ item[0].client_name }}@{{ item[1] }}.png
+
+- name: setup vpn server
+  hosts:
+    - vpn_nl
+    - vpn_msk
+  tasks:
+  - name: create wireguard user
+    ansible.builtin.user:
+      name: wireguard
+
+  - name: install wireguard package
+    apt:
+      name: wireguard
+      state: present
+      update_cache: yes
+
+  - name: allow wireguard port
+    community.general.ufw:
+      rule: allow
+      port: 51820
+      proto: udp
+
+  - name: create server wireguard config
+    template:
+      dest: /etc/wireguard/wg0.conf
+      src: server_wg0.conf.j2
+      owner: wireguard
+      group: wireguard
+      mode: '0600'
+    notify: reload wireguard config
+
+  - name: enable and persist ip forwarding
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: "1"
+      state: present
+      sysctl_set: yes
+      reload: yes
+
+  - name: start wireguard and enable on boot
+    systemd:
+      name: wg-quick@wg0
+      enabled: yes
+      state: started
+  handlers:
+  # Reloads config without disrupting current peer sessions, but does not
+  # re-run PostUp commands. Notify this handler on server config changes.
+  - name: reload wireguard config
+    shell: wg syncconf wg0 <(wg-quick strip wg0)
+    args:
+      executable: /bin/bash
+
